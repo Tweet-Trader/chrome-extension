@@ -24,7 +24,13 @@ export default defineManifest(async (env) => ({
     },
     content_scripts: [
         {
-            matches: ["https://*/*"],
+            run_at: "document_end",
+            matches: [
+                "https://twitter.com/*",
+                "https://mobile.twitter.com/*",
+                "https://tweetdeck.twitter.com/*",
+                "https://x.com/*"
+            ],
             js: ["src/content/index.ts"],
         },
     ],
@@ -38,6 +44,10 @@ export default defineManifest(async (env) => ({
     side_panel: {
         default_path: "src/sidepanel/sidepanel.html",
     },
+    host_permissions: [
+        "http://localhost:3000/*",
+        "http://localhost:8787/*",
+    ],
     action: {
         default_popup: "src/popup/popup.html",
         default_icon: {
@@ -47,5 +57,9 @@ export default defineManifest(async (env) => ({
             "128": "src/assets/icons/icon-128.png",
         },
     },
-    permissions: ["storage", "sidePanel"] as chrome.runtime.ManifestPermissions[],
+    permissions: [
+        "activeTab", 
+        "identity", 
+        "storage",
+    ] as chrome.runtime.ManifestPermissions[],
 }));

@@ -1,9 +1,13 @@
-type IStorage = {
-    count: number;
+export type IStorage = {
+    token: string;
+    refreshToken: string;
+    twitterId: string;
 };
 
 const defaultStorage: IStorage = {
-    count: 0,
+    token: '',
+    refreshToken: '',
+    twitterId: '',
 };
 
 export const storage = {

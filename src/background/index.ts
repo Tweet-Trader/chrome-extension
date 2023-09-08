@@ -1,13 +1,12 @@
-import { storage } from "../storage";
+import { login, testTokens } from './methods';
 
 // Background service workers
 // https://developer.chrome.com/docs/extensions/mv3/service_workers/
 
-chrome.runtime.onInstalled.addListener(() => {
-    storage.get().then(console.log);
-});
+// background script
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+	if (message.type === 'login') login().then(value => sendResponse(value)); 
+	if (message.type === 'testTokens') testTokens().then(value => sendResponse(value)); 
 
-// NOTE: If you want to toggle the side panel from the extension's action button,
-// you can use the following code:
-// chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
-//    .catch((error) => console.error(error));
+	return true;
+});
