@@ -31,6 +31,7 @@
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.0.0",
         "tailwind-merge": "^1.14.0",
-        "viem": "^1.10.4"
+        "viem": "^1.10.8",
+        "zod": "^3.22.2"
     }
 }

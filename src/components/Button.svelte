@@ -13,7 +13,7 @@
           outline: 'border border-sky-500 bg-transparent text-sky-500 hover:bg-sky-500/20',
         },
         size: {
-          default: 'min-w-[78px] min-h-[32px] px-4',
+          default: 'min-w-[78px] min-h-[32px] px-4 py-2',
         }
       },
     }

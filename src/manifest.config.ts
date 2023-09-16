@@ -47,6 +47,12 @@ export default defineManifest(async (env) => ({
     host_permissions: [
         "http://localhost:3000/*",
         "http://localhost:8787/*",
+        "http://localhost:7878/*",
+        "http://localhost:8545/*",
+        "https://twitter.com/*",
+        "https://x.com/*",
+        "https://mobile.twitter.com/*",
+        "https://tweetdeck.twitter.com/*",
     ],
     action: {
         default_popup: "src/popup/popup.html",
@@ -58,6 +64,9 @@ export default defineManifest(async (env) => ({
         },
     },
     permissions: [
+        "tabs",
+        "scripting",
+        "cookies",
         "activeTab", 
         "identity", 
         "storage",

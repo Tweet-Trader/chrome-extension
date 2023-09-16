@@ -2,21 +2,17 @@ import { storage } from "../storage";
 
 export const login = async () => {
   try {
-    const response = await (await fetch(`${import.meta.env.VITE_NODE_URL}/request_access_token`)).json();
+    const response = await (await fetch(`${import.meta.env.VITE_NODE_URL}/requestAccessToken`)).json();
     const authUrl = new URL('https://api.twitter.com/oauth/authenticate');
     authUrl.searchParams.set('oauth_token', response.token);
     authUrl.searchParams.set('force_login', 'false');
 
-    console.log('authUrl: ', authUrl.href);
     const responseUrl = await chrome.identity.launchWebAuthFlow({ url: authUrl.href, interactive: true },)
     const oauth_token = responseUrl!.split('?')[1].split('&')[0].split('=')[1];
     const oauth_verifier = responseUrl!.split('?')[1].split('&')[1].split('=')[1];
 
-    console.log('oauth token: ', oauth_token);
-    console.log('oauth verifier: ', oauth_verifier);
-
     const data = { token: oauth_token, verifier: oauth_verifier, secret: response.secret };
-    const access_token = await fetch(`${import.meta.env.VITE_NODE_URL}/access_token`, {
+    const access_token = await fetch(`${import.meta.env.VITE_NODE_URL}/accessToken`, {
       method: 'POST',
       body: JSON.stringify(data),
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' }
@@ -24,7 +20,6 @@ export const login = async () => {
     const { twitterId, token, refreshToken } = await access_token.json();
 
     await storage.set({ twitterId, token, refreshToken });
-    console.log('token saved');
 
     return true;
   } catch (err) {
@@ -34,44 +29,109 @@ export const login = async () => {
 
 export const testTokens = async () => {
   const { twitterId, ...tokens } = await storage.get();
-  console.log("tokens: ", tokens);
   // tokens don't exist
   if (tokens.token === '' && tokens.refreshToken === '') {
     return false
   }
-  console.log("tokens exist")
 
   // test if access token is valid
-  const testAccessTokenResponse = await fetch(`${import.meta.env.VITE_AUTH_WORKER_URL}/testAccessToken`, {
+  const testAccessTokenResponse = await fetch(`${import.meta.env.VITE_WORKER_URL}/testAccessToken`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ token: tokens.token, twitterId })
   })
-  console.log("testAccessTokenResponse: ", testAccessTokenResponse.status);
 
   if (testAccessTokenResponse.status === 403) {
     // test is refresh token is valid
-    const refreshAccessTokenResponse = await fetch(`${import.meta.env.VITE_AUTH_WORKER_URL}/refreshAccessToken`, {
+    const refreshAccessTokenResponse = await fetch(`${import.meta.env.VITE_WORKER_URL}/refreshAccessToken`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ refreshToken: tokens.refreshToken, twitterId })
     })
-    console.log("refeshAccessTokenResponse: ", refreshAccessTokenResponse.status);
     
     if (refreshAccessTokenResponse.status === 403) return false 
     const { token, refreshToken } = await refreshAccessTokenResponse.json()
     await storage.set({ twitterId, token, refreshToken })
-    console.log("tokens have been refreshed")
 
     return true
   }
   const { isValid } = await testAccessTokenResponse.json()
-  console.log("tokens are valid: ", isValid);
 
   return isValid
 }
 
+export const getAddress = async () => {
+  const { twitterId, ...tokens } = await storage.get();
+
+  const response = await fetch(`${import.meta.env.VITE_WORKER_URL}/getAddress`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${tokens.token}`
+    },
+    body: JSON.stringify({ twitterId })
+  });
+
+  if (response.status === 401 || response.status === 404) {
+    return { error: true, message: response.statusText }
+  }
+
+  const { address } = await response.json();
+
+  return address
+}
+
+export const deposit = async (to: `0x${string}`, amount: string) => {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    console.log("tab: ", tab);
+    await chrome.scripting.executeScript({
+      target: { tabId: tab!.id! },
+      world: 'MAIN',
+      func: async (to: `0x${string}`, amount: string) => {
+        try {
+          console.log("gets in here: ", window.ethereum);
+
+          const [account] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          console.log("account: ", account);
+          console.log("to: ", to);
+          const txHash = await window.ethereum.request({ 
+            method: 'eth_sendTransaction',
+            params: [{
+              from: account,
+              to,
+              value: amount,
+            }]
+          })
+          console.log("tx hash: ", txHash);
+          const receipt = await new Promise((resolve) => setInterval(async () => {
+            const receipt = await window.ethereum.request({ method: 'eth_getTransactionReceipt', params: [txHash] })
+            console.log("receipt: ", receipt);
+            if (receipt) resolve(receipt)
+          }, 1000))
+
+          console.log("receipt outside the promise: ", receipt);
+
+          return receipt
+        } catch (err) {
+          console.log("err: ", err);
+        }
+      },
+      args: [to, amount]
+    })
+  } catch (err) {
+    console.log("err: ", err);
+  }
+}
+
+export const getNightMode = async () => {
+  const nightModeCookie = await chrome.cookies.get({ url: 'https://twitter.com', name: 'night_mode' });
+  const nightMode = nightModeCookie?.value || '0'
+  console.log("night mode: ", nightMode);
+
+  return nightMode
+}
