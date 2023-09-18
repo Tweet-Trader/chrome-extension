@@ -2,14 +2,15 @@
   import { getContext } from "svelte"
   import { formatUnits, parseUnits } from 'viem'
   import { z } from 'zod'
-  import { storage } from '../storage';
+  import { storage } from '../../storage';
 
-  import Button from "./Button.svelte"
-	import Input from "./Input.svelte";
-	import LeadingInput from "./LeadingInput.svelte";
-  import Spinner from "./Spinner.svelte";
-  import { txt, debounce, trimNumber } from "../utils" 
-  import { UINT_MAX, getAmountOut } from "../background/contractMethods";
+  import Button from "../Button.svelte"
+	import Input from "../Input.svelte";
+	import LeadingInput from "../LeadingInput.svelte";
+  import Spinner from "../Icons/Spinner.svelte";
+  import TwitterCheck from "../Icons/TwitterCheck.svelte";
+  import { txt, debounce, trimNumber } from "../../utils" 
+  import { UINT_MAX, getAmountOut } from "../../background/contractMethods";
 
   const schema = z.object({
     tokenAddress: z.string().length(42, { message: 'Token address must be 42 characters' }).startsWith('0x', { message: 'Token address must start with 0x'}), 
@@ -55,7 +56,8 @@
   })();
 
   // form state
-  let processing: boolean = false;
+  let showModal: boolean = false;
+  let transactionPromise: Promise<`0x${string}`>;
   let errorState: Record<string, string>;
 
   const onSubmit = async (e: Event) => {
@@ -66,33 +68,46 @@
       return
     }
 
+    showModal = true;
     if (!isApproved) {
-      const txHash = await chrome.runtime.sendMessage({ type: 'approve', walletAddress: address, tokenAddress });
-      const receipt = await chrome.runtime.sendMessage({ type: 'waitForTransaction', txHash });
-      isApproved = true;
+      const approve = async () => {
+        const txHash = await chrome.runtime.sendMessage({ type: 'approve', walletAddress: address, tokenAddress });
+        await chrome.runtime.sendMessage({ type: 'waitForTransactionReceipt', txHash });
+        isApproved = true;
 
-      return txHash
+        return txHash
+      }
+      transactionPromise = approve();
+
+      return
     }
 
-    // parse swap data
-    const { twitterId } = await storage.get();
-    const amount = parseUnits(amountIn, swapType === 'BUY' ? 18 : decimals).toString();
-    console.log("amount when submitting: ", amount);
-    const swapData = { twitterId, tokenAddress, amount, slippage, decimals, tokenPrice: price }
+    const swap = async () => {
+      // parse swap data
+      const { twitterId } = await storage.get();
+      const amount = parseUnits(amountIn, swapType === 'BUY' ? 18 : decimals).toString();
+      console.log("amount when submitting: ", amount);
+      const swapData = { twitterId, tokenAddress, amount, slippage, decimals, tokenPrice: price }
 
-    // swap
-    console.log("attempting to buy: ", swapData);
-    processing = true;
-    let txHash;
-    if (swapType === 'BUY') txHash = await chrome.runtime.sendMessage({ type: 'buy', ...swapData });
-    else txHash = await chrome.runtime.sendMessage({ type: 'sell', ...swapData });
-    console.log("txHash: ", txHash);
+      // swap
+      console.log("attempting to buy: ", swapData);
+      let txHash: `0x${string}`;
+      if (swapType === 'BUY') txHash = await chrome.runtime.sendMessage({ type: 'buy', ...swapData });
+      else txHash = await chrome.runtime.sendMessage({ type: 'sell', ...swapData });
+      console.log("txHash: ", txHash);
 
-    tokenBalance = BigInt(await chrome.runtime.sendMessage({ type: 'getTokenBalance', walletAddress: address, tokenAddress }))
-    ethBalance = BigInt(await chrome.runtime.sendMessage({ type: 'getBalance', walletAddress: address }));
-    console.log("token balance: ", tokenBalance);
-    console.log("eth balance: ", ethBalance);
-    processing = false;
+      await chrome.runtime.sendMessage({ type: 'waitForTransactionReceipt', txHash });
+
+      tokenBalance = BigInt(await chrome.runtime.sendMessage({ type: 'getTokenBalance', walletAddress: address, tokenAddress }))
+      ethBalance = BigInt(await chrome.runtime.sendMessage({ type: 'getBalance', walletAddress: address }));
+      console.log("token balance: ", tokenBalance);
+      console.log("eth balance: ", ethBalance);
+
+      return txHash;
+    }
+
+    transactionPromise = swap();
+    return
   }
 
   const getTokenData = async (tokenAddress: `0x${string}`) => {
@@ -159,10 +174,28 @@
   }
 </script>
 
-<form on:submit|preventDefault={onSubmit} class={`flex-grow flex flex-col ${txt[nightMode].bg} rounded-2xl px-8 py-8 ${txt[nightMode].textPrimary} gap-y-10`}>
-  <div class={`absolute inset-0 justify-center items-center bg-black/40 ${processing ? 'flex' : 'hidden'}`}>
-    <Spinner />
-  </div>
+<form on:submit|preventDefault={onSubmit} class={`relative flex-grow flex flex-col ${txt[nightMode].bg} rounded-2xl px-8 py-8 ${txt[nightMode].textPrimary} gap-y-10`}>
+  <div class={showModal ? "flex justify-center items-center absolute inset-0" : "hidden z-20"} >
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div class="absolute inset-0 bg-black/60 z-20" on:click={() => showModal = false}/> 
+    {#await transactionPromise}
+      <div class={`flex flex-col justify-center items-center gap-y-4 overflow-hidden px-6 py-3 bg-sky-600 rounded-lg z-30`}>
+        <h2 class="text-xl font-bold">Processing</h2>
+        <Spinner />
+      </div>
+    {:then}
+      <div class={`flex flex-col justify-center items-center gap-y-4 overflow-hidden px-6 py-3 bg-sky-600 rounded-lg z-30`}>
+        <h2 class="text-xl font-bold">Success</h2>
+        <TwitterCheck />
+      </div>
+    {:catch}
+      <div class={`flex flex-col justify-center items-center gap-y-4 overflow-hidden px-6 py-3 bg-sky-600 rounded-lg z-30`}>
+        <h2 class="text-xl font-bold">Transaction Failed</h2>
+        <p class={`text-sm ${txt[nightMode].textPrimary}/75`}>Transaction Failed</p>
+      </div>
+    {/await}
+  </div> 
 
   <div class="flex items-center justify-between">
     <h1 class="text-xl font-bold">Swap</h1>

@@ -1,4 +1,4 @@
-import TwitterBot from "../components/TwitterBot.svelte";
+import TwitterBot from "../components/Routes/TwitterBot.svelte";
 
 // Some global styles on the page
 import "./styles.css";
@@ -9,16 +9,20 @@ const callback = async (mutationList: MutationRecord[]) => {
   for (const mutation of mutationList) {
     if (mutation.type === 'childList') {
       const sidebarColumn = document.querySelector('[data-testid="sidebarColumn"]');
-      const trending = document.querySelector('[aria-label="Trending"]');
+      const search = document.querySelector('[role="search"]') as unknown as HTMLElement;
       const nightMode = await chrome.runtime.sendMessage({ type: 'getNightMode' })
 
-      if (sidebarColumn && trending) {
-        const firstChild = trending.firstChild as unknown as Element;
-        const elementsToDelete = [...Array(firstChild.childElementCount - 1).keys()]
-          .map((i) => firstChild.children.item(i + 1)!);
-        for (const ele of elementsToDelete) {
-          ele.remove();
-        }
+      if (sidebarColumn && search) {
+        const elementToHide = sidebarColumn.firstChild as unknown as HTMLElement;
+        sidebarColumn.prepend(search);
+
+        search.style.position = 'fixed';
+        search.style.top = '5px';
+        search.style.width = 'inherit';
+        search.style.zIndex = '999';
+
+        // elementToHide.style.display = 'none';
+        elementToHide?.remove();
 
         new TwitterBot({ target: sidebarColumn as Element, props: { nightMode: Number(nightMode) }}); 
         break;

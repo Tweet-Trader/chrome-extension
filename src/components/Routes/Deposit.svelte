@@ -1,9 +1,9 @@
 <script lang="ts">
-  import Button from "./Button.svelte"
+  import Button from "../Button.svelte"
   import { getContext } from "svelte"
-  import { address as addressStore } from "../stores/address";
-  import { txt } from "../utils"
-	import Input from "./Input.svelte";
+  import { address as addressStore } from "../../stores/address";
+  import { txt } from "../../utils"
+	import Input from "../Input.svelte";
   import { parseEther, toHex } from 'viem'
 
   let ethAmount = '';

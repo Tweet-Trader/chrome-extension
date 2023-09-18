@@ -12,6 +12,36 @@ const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const USDC_PAIR = "0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc";
 export const UINT_MAX = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
+export const getAddress = async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [{ result: address }] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id! },
+    world: 'MAIN',
+    func: async () => {
+      const [address] = await window.ethereum.request({ method: 'eth_accounts' });
+
+      return address;
+    }
+  })
+
+  return address;
+}
+
+export const requestAddress = async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [{ result: address }] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id! },
+    world: 'MAIN',
+    func: async () => {
+      const [address] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+      return address;
+    }
+  })
+
+  return address;
+}
+
 export const getBalance = async (address: `0x${string}`) => {
   const balance = await publicClient.getBalance({ address });
 
@@ -143,9 +173,9 @@ export const getTokenData = async (walletAddress: `0x${string}`, tokenAddress: `
 }
 
 export const waitForTransactionReceipt = async (txHash: `0x${string}`) => {
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+  const { transactionHash } = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-  return receipt;
+  return transactionHash;
 }
 
 export const approve = async (walletAddress: `0x${string}`, tokenAddress: `0x${string}`) => {
@@ -266,10 +296,17 @@ export const sell = async (data: SwapBody) => {
   const token = await fetchReserves(pair, tokenAddress);
   console.log("data fetched")
 
-  const amountOut = getAmountOut(amountIn, token.wethReserves, token.tokenReserves);
+  const amountOut = getAmountOut(amountIn, token.tokenReserves, token.wethReserves);
   const bp = getBasisPointsMultiplier(slippage);
+  console.log("bp: ", bp)
+  console.log(100 - slippage);
+  console.log((100 - slippage) * bp);
+  console.log(100 * bp);
   const amountOutMin = amountOut * BigInt((100 - slippage) * bp) / BigInt(100 * bp);
   console.log("data prepared");
+
+  console.log("amount out: ", amountOut.toString());
+  console.log("amount out min: ", amountOutMin.toString());
 
   const { request: contractWriteRequest } = await publicClient.simulateContract({
     account: address,

@@ -1,11 +1,12 @@
 import { 
 	login, 
 	testTokens,
-	getAddress,
 	getNightMode,
 	deposit,
 } from './methods';
 import {
+	getAddress,
+	requestAddress,
 	getBalance,
 	getTokenBalance,
 	getTokenData,
@@ -26,12 +27,13 @@ import {
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
 	if (message.type === 'login') login().then(value => sendResponse(value)).catch((error) => sendResponse(error));
 	if (message.type === 'testTokens') testTokens().then(value => sendResponse(value)).catch((error) => sendResponse(error));
-	if (message.type === 'getAddress') getAddress().then(value => sendResponse(value)).catch((error) => sendResponse(error));
 	if (message.type === 'getNightMode') getNightMode().then(value => sendResponse(value)).catch((error) => sendResponse(error));
 	if (message.type === 'deposit') deposit(message.to, message.amount).then(value => sendResponse(value)).catch((error) => sendResponse(error));
 
 	// CONTRACT METHODS
 	if (message.type === 'waitForTransactionReceipt') waitForTransactionReceipt(message.txHash).then(value => sendResponse(value)).catch((error) => sendResponse(error));
+	if (message.type === 'getAddress') getAddress().then(value => sendResponse(value)).catch((error) => sendResponse(error));
+	if (message.type === 'requestAddress') requestAddress().then(value => sendResponse(value)).catch((error) => sendResponse(error));
 	if (message.type === 'getBalance') getBalance(message.walletAddress).then(value => sendResponse(value)).catch((error) => sendResponse(error));
 	if (message.type === 'getTokenBalance') getTokenBalance(message.walletAddress, message.tokenAddress).then(value => sendResponse(value)).catch((error) => sendResponse(error));
 	if (message.type === 'getPairAddress') getPairAddress(message.tokenAddress).then(value => sendResponse(value)).catch((error) => sendResponse(error));

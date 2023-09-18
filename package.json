@@ -1,11 +1,11 @@
 {
-    "name": "chrome-extension-svelte-typescript-boilerplate",
-    "description": "Boilerplate for Chrome Extension Svelte Typescript project",
-    "version": "1.0.0",
+    "name": "Tweet Trader",
+    "description": "Simple trading app built directly into Twitter",
+    "version": "0.0.1",
     "type": "module",
     "repository": {
         "type": "git",
-        "url": "https://github.com/nekitcorp/chrome-extension-svelte-typescript-boilerplate.git"
+        "url": ""
     },
     "scripts": {
         "dev": "vite",

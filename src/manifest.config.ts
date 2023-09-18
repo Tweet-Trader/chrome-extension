@@ -68,7 +68,5 @@ export default defineManifest(async (env) => ({
         "scripting",
         "cookies",
         "activeTab", 
-        "identity", 
-        "storage",
     ] as chrome.runtime.ManifestPermissions[],
 }));
